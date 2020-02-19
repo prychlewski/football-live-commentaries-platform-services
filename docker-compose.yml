@@ -1,0 +1,84 @@
+version: '3'
+services:
+  user-proxy-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - SERVICE_PORTS=8080
+    volumes:
+      - ./user-proxy-service:/app
+    networks:
+      - hidden
+    extra_hosts:
+      - "football-match.service:${HAPROXY_IP:-127.0.0.1}"
+      - "team.service:${HAPROXY_IP:-127.0.0.1}"
+      - "relation.service:${HAPROXY_IP:-127.0.0.1}"
+
+  football-match-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - SERVICE_PORTS=8080
+    volumes:
+      - ./football-match-service:/app
+    networks:
+      - hidden
+
+  team-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - SERVICE_PORTS=8080
+    volumes:
+      - ./team-service:/app
+    networks:
+      - hidden
+
+  relation-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      - SERVICE_PORTS=8080
+    volumes:
+      - ./relation-service:/app
+    networks:
+      - hidden
+
+  db:
+    image: mariadb:latest
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: football
+      MYSQL_DATABASE: football
+    networks:
+      - hidden
+
+  haproxy:
+    image: haproxy
+    links:
+      - user-proxy-service
+      - football-match-service
+      - team-service
+      - relation-service
+    ports:
+      - 80:80
+      - 1936:1936
+    volumes:
+      - ./docker/haproxy/${HAPROXY_CFG:-haproxy.cfg}:/usr/local/etc/haproxy/haproxy.cfg
+    extra_hosts:
+      - "proxy.service:127.0.0.1"
+      - "user.service:127.0.0.1"
+      - "football-match.service:127.0.0.1"
+      - "team.service:127.0.0.1"
+      - "relation.service:127.0.0.1"
+    networks:
+      - hidden
+
+networks:
+  hidden:
+    driver: bridge
